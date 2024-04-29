@@ -1,0 +1,2 @@
+start:
+	retroarch main.lua
