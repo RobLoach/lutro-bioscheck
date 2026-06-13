@@ -131,6 +131,10 @@ function lutro.keypressed(key)
         r:home()
     elseif key == "end" then
         r:toEnd()
+    elseif key == "left" then
+        r:jumpCategory(-1)
+    elseif key == "right" then
+        r:jumpCategory(1)
     elseif key == "return" or key == "space" then
         r:toggleFilter()
     end
@@ -146,9 +150,13 @@ function lutro.joystickpressed(joystick, button)
     elseif button == 5 then
         r:scroll(1)
     elseif button == 6 then
-        r:page(-1)
+        r:jumpCategory(-1)
     elseif button == 7 then
-        r:page(1)
+        r:jumpCategory(1)
+    elseif button == 10 then
+        r:jumpCategory(-1)
+    elseif button == 11 then
+        r:jumpCategory(1)
     elseif button == 0 or button == 8 then -- B or A
         r:toggleFilter()
     end
