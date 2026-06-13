@@ -1,2 +1,2 @@
 start:
-	retroarch main.lua
+	retroarch -L lutro main.lua

@@ -1,4 +1,4 @@
 function lutro.conf(t)
-    t.width = 320
-    t.height = 240
+    t.width = 400
+    t.height = 400
 end
