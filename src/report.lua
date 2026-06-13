@@ -20,10 +20,22 @@ local SCROLLBAR_W = 6 -- scrollbar width in pixels
 local Report = {}
 Report.__index = Report
 
--- mode is "all" (every file) or "missing" (only missing/failed files, and only the
--- headers of categories that have at least one such file). A blank spacer row is
--- inserted before every header except the first, to separate the systems visually.
-local function buildRows(entries, results, mode, nameChars)
+local function tallyCounts(entries, results)
+    local counts = {}
+    for i = 1, #entries do
+        local cat = entries[i].category or "Uncategorized"
+        if not counts[cat] then
+            counts[cat] = { present = 0, total = 0 }
+        end
+        counts[cat].total = counts[cat].total + 1
+        if results[i].status == STATUS.OK then
+            counts[cat].present = counts[cat].present + 1
+        end
+    end
+    return counts
+end
+
+local function buildRows(entries, results, mode, nameChars, catCounts)
     local rows = {}
     local lastCategory = nil
     local pendingHeader = nil
@@ -43,13 +55,15 @@ local function buildRows(entries, results, mode, nameChars)
                 if #rows > 0 then
                     rows[#rows + 1] = { kind = "spacer" }
                 end
-                rows[#rows + 1] = { kind = "header", display = text.sanitize(pendingHeader) }
+                local cc = catCounts[pendingHeader]
+                local countStr = cc and (cc.present .. "/" .. cc.total) or ""
+                rows[#rows + 1] = { kind = "header", display = text.sanitize(pendingHeader), countStr = countStr }
                 pendingHeader = nil
             end
             rows[#rows + 1] = {
                 kind = "file",
                 status = result.status,
-                name = text.truncate(text.basename(entry.name), nameChars),
+                name = text.truncate(entry.name, nameChars),
             }
         end
     end
@@ -70,8 +84,9 @@ function M.build(entries, results, counts, opts)
     self.counts = counts
     self.noSystemDir = opts.noSystemDir
     self.visibleLines = opts.visibleLines or 12
-    self.allRows = buildRows(entries, results, "all", nameChars)
-    self.missingRows = buildRows(entries, results, "missing", nameChars)
+    local catCounts = tallyCounts(entries, results)
+    self.allRows = buildRows(entries, results, "all", nameChars, catCounts)
+    self.missingRows = buildRows(entries, results, "missing", nameChars, catCounts)
     self.filter = "all"
     self.rows = self.allRows
     self.scrollOffset = 0
@@ -110,6 +125,33 @@ function Report:toggleFilter()
         self.rows = self.allRows
     end
     self.scrollOffset = 0
+end
+
+function Report:jumpCategory(dir)
+    local headers = {}
+    for i = 1, #self.rows do
+        if self.rows[i].kind == "header" then
+            headers[#headers + 1] = i - 1
+        end
+    end
+    if #headers == 0 then return end
+
+    if dir > 0 then
+        for _, pos in ipairs(headers) do
+            if pos > self.scrollOffset then
+                self.scrollOffset = math.min(pos, self:maxOffset())
+                return
+            end
+        end
+    else
+        for i = #headers, 1, -1 do
+            if headers[i] < self.scrollOffset then
+                self.scrollOffset = headers[i]
+                return
+            end
+        end
+        self.scrollOffset = 0
+    end
 end
 
 function Report:summaryLine()
@@ -163,6 +205,12 @@ function Report:draw(g, layout)
         drawCheckmark(g, boxX + 1, layout.headerY + 1, boxSize - 2)
     end
 
+    if #self.rows == 0 and self.filter == "missing" then
+        g.setColor(COLOR.ok[1], COLOR.ok[2], COLOR.ok[3])
+        g.print("All BIOS present", layout.x, layout.top)
+        return
+    end
+
     local iconDY = math.floor((layout.lineHeight - ICON_SIZE) / 2)
     local nameX = layout.x + ICON_SIZE + ICON_GAP
     local first = self.scrollOffset
@@ -173,6 +221,10 @@ function Report:draw(g, layout)
         if item.kind == "header" then
             g.setColor(COLOR.category[1], COLOR.category[2], COLOR.category[3])
             g.print(item.display, layout.x, y)
+            if item.countStr then
+                local cx = layout.width - SCROLLBAR_W - 4 - math.floor(#item.countStr * CHAR_W)
+                g.print(item.countStr, cx, y)
+            end
         elseif item.kind == "file" then
             drawStatusIcon(g, item.status, layout.x, y + iconDY, ICON_SIZE)
             local c = (item.status == STATUS.OK) and COLOR.ok or COLOR.missing
