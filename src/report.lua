@@ -15,7 +15,7 @@ local COLOR = {
 local ICON_SIZE = 9
 local ICON_GAP = 5 -- gap between the left-hand status icon and the filename
 local CHAR_W = 8.5 -- approx image-font glyph width, for fitting names to the row
-local SCROLLBAR_W = 6 -- scrollbar width in pixels
+local SCROLLBAR_W = 12 -- scrollbar width in pixels
 
 local Report = {}
 Report.__index = Report
@@ -90,6 +90,8 @@ function M.build(entries, results, counts, opts)
     self.filter = "all"
     self.rows = self.allRows
     self.scrollOffset = 0
+    self.dragging = false
+    self.dragGrab = 0 -- cursor offset within the thumb at grab time
     return self
 end
 
@@ -152,6 +154,53 @@ function Report:jumpCategory(dir)
         end
         self.scrollOffset = 0
     end
+end
+
+-- Scrollbar geometry for the given layout, or nil when the list fits (no bar).
+-- Returns trackX, trackY, trackH, thumbH, thumbY so drawing and hit-testing agree.
+function Report:scrollbarRect(layout)
+    if #self.rows <= self.visibleLines then return nil end
+    local trackX = layout.width - SCROLLBAR_W - 2
+    local trackY = layout.top
+    local trackH = layout.height - layout.top
+    local thumbH = math.max(6, math.floor(trackH * self.visibleLines / #self.rows))
+    local maxOff = math.max(1, self:maxOffset())
+    local thumbY = trackY + math.floor((trackH - thumbH) * (self.scrollOffset / maxOff))
+    return trackX, trackY, trackH, thumbH, thumbY
+end
+
+-- Start a scrollbar drag if (mx, my) lands on the bar. Grabbing the thumb keeps
+-- the cursor's position within it; clicking the track jumps the thumb under the
+-- cursor. Returns true when a drag began.
+function Report:beginDrag(mx, my, layout)
+    local trackX, trackY, trackH, thumbH, thumbY = self:scrollbarRect(layout)
+    if not trackX then return false end
+    if mx < trackX or mx >= trackX + SCROLLBAR_W then return false end
+    if my < trackY or my >= trackY + trackH then return false end
+
+    if my >= thumbY and my < thumbY + thumbH then
+        self.dragGrab = my - thumbY
+    else
+        self.dragGrab = math.floor(thumbH / 2)
+    end
+    self.dragging = true
+    self:dragTo(my, layout)
+    return true
+end
+
+-- Map a cursor Y to a scroll offset while dragging the scrollbar.
+function Report:dragTo(my, layout)
+    local trackX, trackY, trackH, thumbH = self:scrollbarRect(layout)
+    if not trackX then return end
+    local span = trackH - thumbH
+    if span <= 0 then return end
+    local t = (my - self.dragGrab - trackY) / span
+    if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    self.scrollOffset = math.floor(t * self:maxOffset() + 0.5)
+end
+
+function Report:endDrag()
+    self.dragging = false
 end
 
 function Report:summaryLine()
@@ -234,16 +283,10 @@ function Report:draw(g, layout)
     end
 
     -- Scrollbar, drawn only when the list overflows the window.
-    if #self.rows > self.visibleLines then
-        local trackX = layout.width - SCROLLBAR_W - 2
-        local trackY = layout.top
-        local trackH = layout.height - layout.top
+    local trackX, trackY, trackH, thumbH, thumbY = self:scrollbarRect(layout)
+    if trackX then
         g.setColor(COLOR.track[1], COLOR.track[2], COLOR.track[3])
         g.rectangle("fill", trackX, trackY, SCROLLBAR_W, trackH)
-
-        local thumbH = math.max(6, math.floor(trackH * self.visibleLines / #self.rows))
-        local maxOff = math.max(1, self:maxOffset())
-        local thumbY = trackY + math.floor((trackH - thumbH) * (self.scrollOffset / maxOff))
         g.setColor(COLOR.thumb[1], COLOR.thumb[2], COLOR.thumb[3])
         g.rectangle("fill", trackX, thumbY, SCROLLBAR_W, thumbH)
     end

@@ -10,7 +10,7 @@ local text      = require 'src/text'
 
 local PHASE = { LOADING = 1, CHECKING = 2, REPORT = 3 }
 
-local app = { phase = PHASE.LOADING, holdTimer = 0 }
+local app = { phase = PHASE.LOADING, holdTimer = 0, mouseHold = 0, mouseDown = false }
 
 -- Layout is finalized in lutro.load() once the real framebuffer size is known;
 -- width/height here are fallbacks matching conf.lua.
@@ -99,6 +99,40 @@ function lutro.update(dt)
         else
             app.holdTimer = 0
         end
+
+        -- Mouse buttons 4 (scroll up) and 5 (scroll down), polled so holding a
+        -- button keeps scrolling. The rising edge gives an immediate first step;
+        -- holding then auto-repeats on the same cadence as the d-pad.
+        local mdir = 0
+        if lutro.mouse.isDown(4) then
+            mdir = -1
+        elseif lutro.mouse.isDown(5) then
+            mdir = 1
+        end
+        if mdir ~= 0 then
+            if app.mouseHold == 0 then r:scroll(mdir) end
+            app.mouseHold = app.mouseHold + 1
+            if app.mouseHold > 12 and app.mouseHold % 3 == 0 then
+                r:scroll(mdir)
+            end
+        else
+            app.mouseHold = 0
+        end
+
+        -- Scrollbar drag with the left button: grab on press, follow while held,
+        -- release on let-go.
+        local down = lutro.mouse.isDown(1)
+        if down then
+            local mx, my = lutro.mouse.getX(), lutro.mouse.getY()
+            if not app.mouseDown then
+                r:beginDrag(mx, my, layout)
+            elseif r.dragging then
+                r:dragTo(my, layout)
+            end
+        else
+            r:endDrag()
+        end
+        app.mouseDown = down
     end
 end
 
