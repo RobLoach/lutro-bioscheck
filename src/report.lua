@@ -14,7 +14,10 @@ local COLOR = {
 
 local ICON_SIZE = 9
 local ICON_GAP = 5 -- gap between the left-hand status icon and the filename
-local CHAR_W = 8.5 -- approx image-font glyph width, for fitting names to the row
+-- Approximate average glyph width; font.png is 605px for 73 glyphs (≈8.3px each).
+-- Lutro's ImageFont uses per-glyph widths so there is no single exact value; 8.5 is
+-- a safe ceiling that avoids clipping while keeping filenames as long as possible.
+local CHAR_W = 8.5
 local SCROLLBAR_W = 12 -- scrollbar width in pixels
 
 local Report = {}

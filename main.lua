@@ -10,6 +10,18 @@ local text      = require 'src/text'
 
 local PHASE = { LOADING = 1, CHECKING = 2, REPORT = 3 }
 
+-- RETRO_DEVICE_JOYPAD button indices used by Lutro.
+local BTN = {
+    B     = 0,
+    UP    = 4,
+    DOWN  = 5,
+    LEFT  = 6,
+    RIGHT = 7,
+    A     = 8,
+    L     = 10,
+    R     = 11,
+}
+
 local app = { phase = PHASE.LOADING, holdTimer = 0, mouseHold = 0, mouseDown = false }
 
 -- Layout is finalized in lutro.load() once the real framebuffer size is known;
@@ -53,8 +65,6 @@ function lutro.load()
     local h = lutro.graphics.getHeight()
     if w and w > 0 then layout.width = w end
     if h and h > 0 then layout.height = h end
-    screenWidth = layout.width
-    screenHeight = layout.height
 
     -- One header line (summary on the left, checkbox at the top-right) above the list.
     layout.headerY = 2
@@ -174,24 +184,19 @@ function lutro.keypressed(key)
     end
 end
 
--- Gamepad input. Lutro passes a raw RETRO_DEVICE_JOYPAD button index:
--- b=0 up=4 down=5 left=6 right=7 a=8. D-pad scrolls/pages, A or B toggles.
+-- Gamepad input. D-pad scrolls, L/R jump categories, A or B toggles filter.
 function lutro.joystickpressed(joystick, button)
     if app.phase ~= PHASE.REPORT then return end
     local r = app.report
-    if button == 4 then
+    if button == BTN.UP then
         r:scroll(-1)
-    elseif button == 5 then
+    elseif button == BTN.DOWN then
         r:scroll(1)
-    elseif button == 6 then
+    elseif button == BTN.LEFT or button == BTN.L then
         r:jumpCategory(-1)
-    elseif button == 7 then
+    elseif button == BTN.RIGHT or button == BTN.R then
         r:jumpCategory(1)
-    elseif button == 10 then
-        r:jumpCategory(-1)
-    elseif button == 11 then
-        r:jumpCategory(1)
-    elseif button == 0 or button == 8 then -- B or A
+    elseif button == BTN.A or button == BTN.B then
         r:toggleFilter()
     end
 end
@@ -202,6 +207,6 @@ function lutro.wheelmoved(x, y)
     if y > 0 then
         app.report:scroll(-WHEEL_STEP)
     elseif y < 0 then
-        app.report:scroll(WHEEL_STEP)
+        app.report:scroll( WHEEL_STEP)
     end
 end

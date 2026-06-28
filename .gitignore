@@ -1,0 +1,9 @@
+# Lutro / LÖVE artifacts
+*.lutro
+
+# Editor and OS files
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db

@@ -19,11 +19,15 @@ retroarch -L lutro bioscheck.lutro
 
 ### Controls
 
-| Action            | Keyboard            | Gamepad         |
-| ----------------- | ------------------- | --------------- |
-| Scroll line       | Up / Down           | D-pad Up / Down |
-| Scroll page       | Page Up / Page Down | D-pad Left / Right |
-| Toggle present files | Enter / Space    | A / B           |
+| Action               | Keyboard            | Gamepad              |
+| -------------------- | ------------------- | -------------------- |
+| Scroll line          | Up / Down           | D-pad Up / Down      |
+| Scroll page          | Page Up / Page Down |                      |
+| Jump to top / bottom | Home / End          |                      |
+| Jump category        | Left / Right        | D-pad Left / Right, L / R |
+| Toggle present files | Enter / Space       | A / B                |
+
+Mouse wheel scrolling and scrollbar dragging are also supported.
 
 ## Updating the database
 
